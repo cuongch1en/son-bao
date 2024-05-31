@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+    <title>Defacement Website Monitor</title>
+</head>
+<body>
+    <h1>Website Monitor</h1>
+    <a href="{{ url_for('add_target') }}">Add Target</a>
+    <ul>
+    {% for target in targets %}
+        <li>
+            <a href="{{ url_for('view_target', target_id=target[0]) }}">{{ target[1] }}</a>
+            <a href="{{ url_for('remove_target', target_id=target[0]) }}">Remove</a>
+        </li>
+    {% endfor %}
+    </ul>
+</body>
+</html>
