@@ -177,11 +177,16 @@ def check_for_change(target_id):
 
     response = requests.get(target[1])
     soup = BeautifulSoup(response.text, 'html.parser')
-
+    valid_domain = target[3].split(' ')
     new_content = soup.get_text()
-    new_domain = " ".join(get_valid_domain(soup))
+    new_domain = get_valid_domain(soup)
+    for i in new_domain:
+        if i not in valid_domain:
+            is_valid_domain = 1
 
-    if target[3] != new_domain:
+    is_valid_domain = 0
+
+    if is_valid_domain:
         send_discord_alert(url=target[1], content="",
                            title="CRITICAL RISK - UNKNOWN DOMAIN")
     else:

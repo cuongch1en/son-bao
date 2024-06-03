@@ -1,18 +1,36 @@
 <!doctype html>
 <html>
+
 <head>
     <title>Defacement Website Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="icon" type="image/png" href="img\favicon.png">
 </head>
+
 <body>
-    <h1>Website Monitor</h1>
-    <a href="{{ url_for('add_target') }}">Add Target</a>
-    <ul>
-    {% for target in targets %}
-        <li>
-            <a href="{{ url_for('view_target', target_id=target[0]) }}">{{ target[1] }}</a>
-            <a href="{{ url_for('remove_target', target_id=target[0]) }}">Remove</a>
-        </li>
-    {% endfor %}
-    </ul>
+    <div class="container-md">
+        <h1>Website Monitor</h1>
+        <button type="button" class="m-2 btn btn-primary">
+            <a class="text-decoration-none text-reset" href="{{ url_for('add_target') }}">Add Target</a>
+        </button>
+        <div>
+            <ul class="list-group">
+                {% for target in targets %}
+                <li class="list-group-item border-0 d-flex justify-content-between">
+                    <button type="button" class="m-2 btn btn-light w-100 text-start">
+                        <a class="text-decoration-none text-reset"
+                            href="{{ url_for('view_target', target_id=target[0]) }}">{{ target[1] }}</a>
+                    </button>
+                    <button type="button" class="m-2 btn btn-danger">
+                        <a class="text-decoration-none text-reset"
+                            href="{{ url_for('remove_target', target_id=target[0]) }}">Remove</a>
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
 </body>
+
 </html>

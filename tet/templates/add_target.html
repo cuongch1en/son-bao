@@ -1,16 +1,43 @@
 <!doctype html>
 <html>
+
 <head>
     <title>Add Target</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <style>
+        .input-label {
+            width: 200px;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Add Target</h1>
-    <form method="post">
-        <label for="url">URL:</label>
-        <input type="text" id="url" name="url" required>
-        <label for="interval">Check Time (seconds):</label>
-        <input type="number" id="interval" name="interval" required>
-        <button type="submit">Add</button>
-    </form>
+    <div class="container-md">
+        <h1 class="pb-4">Add Target</h1>
+        <form method="post">
+            <div class="d-flex align-items-center mb-3">
+                <div>
+                    <label for="url" class="me-2 input-label">URL:</label>
+                </div>
+                <div class="h-100 me-2 w-100">
+                    <input class="w-100" type="text" id="url" name="url" required>
+                </div>
+            </div>
+            <div class="d-flex align-items-center pb-4">
+                <div>
+                    <label for="interval" class="me-2 input-label">Check Time (seconds):</label>
+                </div>
+                <div class="h-100 me-2 w-100">
+                    <input class="w-100" type="number" id="interval" name="interval" required>
+                </div>
+            </div>
+            <div class="d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary px-3">Add</button>
+            </div>
+        </form>
+    </div>
 </body>
+
 </html>
