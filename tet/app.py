@@ -16,7 +16,8 @@ scheduler = BackgroundScheduler()
 scheduler.start()
 
 DATABASE = 'database.db'
-BLACKLIST = ['hacked by','seized by']
+BLACKLIST = ['hacked', 'seized']
+
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -60,6 +61,7 @@ def content_diff(last_content, new_content):
     else:
         return ''
 
+
 def send_discord_alert(url, content, title):
     webhook_url = 'https://discord.com/api/webhooks/1246398591480893612/4zPHh3usIAihz9aT5krAOsF2v-NGCx-N2yOrhnDgVVUMOz8IzAjDFil6daGMrtL_4k4J'
     data = {
@@ -70,51 +72,34 @@ def send_discord_alert(url, content, title):
                   "Content-Type": "application/json"})
 
 
-def get_valid_domain(soup):
+def get_valid_domains(soup):
 
-    valid_domain = []
+    valid_domains = []
     srcs = soup.findAll(attrs={'src': True})
     hrefs = soup.findAll(attrs={'href': True})
 
     for i in [urlparse(tag['src']).netloc for tag in srcs]:
         if i != "":
-            valid_domain.append(i)
+            valid_domains.append(i)
 
     for i in [urlparse(tag['href']).netloc for tag in hrefs]:
         if i != "":
-            valid_domain.append(i)
+            valid_domains.append(i)
 
-    return list(sorted(set(valid_domain)))
-
-
-def check_web_pages(soup):
-
-    valid_domain = []
-    srcs = soup.findAll(attrs={'src': True})
-    hrefs = soup.findAll(attrs={'href': True})
-
-    for i in [urlparse(tag['src']).netloc for tag in srcs]:
-        if i != "":
-            valid_domain.append(i)
-
-    for i in [urlparse(tag['href']).netloc for tag in hrefs]:
-        if i != "":
-            valid_domain.append(i)
-
-    return list(sorted(set(valid_domain)))
+    return list(sorted(set(valid_domains)))
 
 
-def is_valid_url(url):
-    # Check if the URL points to an image or JS file
+def is_valid_path(url):
+    # Check if the URL points to an image or JS file or GIF or ...
     x = re.search(
-        r'\.(css|jpg|jpeg|png|gif|bmp|webp|svg|ico|woff2|js|pdf)$', url, re.IGNORECASE)
+        r'\.(css|jpg|jpeg|png|gif|bmp|webp|svg|ico|woff2|js|pdf|xml)$', url, re.IGNORECASE)
     if x:
         return True
     else:
         return False
 
 
-def url_check(url):
+def is_url(url):
 
     min_attr = ('scheme', 'netloc')
     try:
@@ -127,46 +112,50 @@ def url_check(url):
         return False
 
 
-def crawl_all_pages(soup, url):
-    valid_domain = []
+def crawl_paths_to_all_pages(soup, url):
+    valid_paths = []
     hrefs = soup.findAll(attrs={'href': True})
     if url[-1] != '/':
         url = url+'/'
 
     for i in [urlparse(tag['href']).path for tag in hrefs]:
         if i != "":
-            if url_check(i):
+            if is_url(i):
 
                 if url in i:
-                    if not is_valid_url(i):
-                        valid_domain.append(i)
+                    if not is_valid_path(i):
+                        valid_paths.append(i)
             else:
-                if not is_valid_url(i):
+                if not is_valid_path(i):
                     if i[0] != '/':
-                        valid_domain.append(url+i)
+                        valid_paths.append(url+i)
                     else:
-                        valid_domain.append(url+i[1:])
+                        valid_paths.append(url+i[1:])
 
-    return list(sorted(set(valid_domain)))
+    return list(sorted(set(valid_paths)))
 
-def check_all_pages(soup, url):
-    
-    valid_domains = crawl_all_pages(soup, url)
 
-    alert = ''
+def check_blacklist_in_all_pages(soup, url):
 
-    for page in valid_domains:
+    all_page_paths = crawl_paths_to_all_pages(soup, url)
+
+    alert_words_in_blacklist = ''
+
+    for page in all_page_paths:
         response = requests.get(page)
         soup = BeautifulSoup(response.text, 'html.parser')
         content = soup.get_text()
-        
-        for i in BLACKLIST:
-            
-            if i in content:
-                alert += page + " contains words from BLACKLIST\n"
-    return alert
+
+        for word in BLACKLIST:
+
+            if word in content:
+                alert_words_in_blacklist += page + " contains words from BLACKLIST\n"
+    return alert_words_in_blacklist
+
 
 def check_for_change(target_id):
+
+    is_valid_domain = 0
     db = get_db()
     cur = db.cursor()
     cur.execute(
@@ -179,23 +168,32 @@ def check_for_change(target_id):
     soup = BeautifulSoup(response.text, 'html.parser')
     valid_domain = target[3].split(' ')
     new_content = soup.get_text()
-    new_domain = get_valid_domain(soup)
-    for i in new_domain:
+    new_domains = get_valid_domains(soup)
+    for i in new_domains:
         if i not in valid_domain:
             is_valid_domain = 1
 
-    is_valid_domain = 0
-
     if is_valid_domain:
         send_discord_alert(url=target[1], content="",
-                           title="CRITICAL RISK - UNKNOWN DOMAIN")
+                           title="HIGH RISK - UNKNOWN DOMAIN")
     else:
-        alert = content_diff(target[2], new_content)
-        alert += check_all_pages(soup,target[1])
+        alert_content_diff = content_diff(target[2], new_content)
+        alert_words_in_blacklist = check_blacklist_in_all_pages(soup, target[1])
+        if alert_content_diff:
 
-        if alert:
-            send_discord_alert(url=target[1], content=alert, title="")
+            
 
+            if alert_words_in_blacklist:
+
+                send_discord_alert(url=target[1], content=alert_content_diff +
+                                   alert_words_in_blacklist, title="MEDIUM RISK - HAVING WORDS IN BLACKLIST")
+            else:
+                send_discord_alert(
+                    url=target[1], content=alert_content_diff, title="")
+        else:
+            if alert_words_in_blacklist:
+                send_discord_alert(url=target[1], content=alert_content_diff +
+                                   alert_words_in_blacklist, title="MEDIUM RISK - HAVING WORDS IN BLACKLIST")
 
 @app.route('/')
 def index():
@@ -216,13 +214,13 @@ def add_target():
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
         last_content = soup.get_text()
-        valid_domain = " ".join(get_valid_domain(soup))
+        valid_domain = " ".join(get_valid_domains(soup))
         cur.execute("INSERT INTO targets (url,last_content,valid_domain) VALUES (?,?,?)",
                     (url, last_content, valid_domain, ))
         db.commit()
         target_id = cur.lastrowid
         scheduler.add_job(func=check_for_change, trigger="interval",
-                          seconds=interval, args=[target_id], id=str(target_id),max_instances=2)
+                          seconds=interval, args=[target_id], id=str(target_id), max_instances=10)
         flash('Target added successfully!')
         return redirect(url_for('index'))
     return render_template('add_target.html')
