@@ -21,8 +21,15 @@ BLACKLIST = ['hacked', 'seized']
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
-    return conn
+    
+    # conn.execute("DROP TABLE IF EXISTS targets")
 
+    return conn
+def clear_db():
+    db = get_db()
+    db.execute("DROP TABLE IF EXISTS targets")
+    db.commit()
+    init_db()
 
 def init_db():
     with app.app_context():
@@ -34,6 +41,8 @@ def init_db():
 
 if not os.path.exists(DATABASE):
     init_db()
+else:
+    clear_db()
 
 
 def content_diff(last_content, new_content):
@@ -64,6 +73,10 @@ def content_diff(last_content, new_content):
 
 def send_discord_alert(url, content, title):
     webhook_url = 'https://discord.com/api/webhooks/1246398591480893612/4zPHh3usIAihz9aT5krAOsF2v-NGCx-N2yOrhnDgVVUMOz8IzAjDFil6daGMrtL_4k4J'
+
+    if len(content) >= 2000:
+        content = content[0:1900]
+
     data = {
         "username": f"ROBOT alerted {title}\n",
         "content": f"Change detected on {url}\n{content}"
@@ -92,7 +105,7 @@ def get_valid_domains(soup):
 def is_valid_path(url):
     # Check if the URL points to an image or JS file or GIF or ...
     x = re.search(
-        r'\.(css|jpg|jpeg|png|gif|bmp|webp|svg|ico|woff2|js|pdf|xml)$', url, re.IGNORECASE)
+        r'\.(css|jpg|jpeg|png|gif|bmp|webp|svg|ico|woff2|js|pdf|xml|txt)$', url, re.IGNORECASE)
     if x:
         return True
     else:
@@ -132,6 +145,8 @@ def crawl_paths_to_all_pages(soup, url):
                     else:
                         valid_paths.append(url+i[1:])
 
+    valid_paths.append(url)
+
     return list(sorted(set(valid_paths)))
 
 
@@ -167,8 +182,10 @@ def check_for_change(target_id):
     response = requests.get(target[1])
     soup = BeautifulSoup(response.text, 'html.parser')
     valid_domain = target[3].split(' ')
+
     new_content = soup.get_text()
     new_domains = get_valid_domains(soup)
+    print(new_domains)
     for i in new_domains:
         if i not in valid_domain:
             is_valid_domain = 1
@@ -178,22 +195,25 @@ def check_for_change(target_id):
                            title="HIGH RISK - UNKNOWN DOMAIN")
     else:
         alert_content_diff = content_diff(target[2], new_content)
-        alert_words_in_blacklist = check_blacklist_in_all_pages(soup, target[1])
-        if alert_content_diff:
+        alert_words_in_blacklist = check_blacklist_in_all_pages(
+            soup, target[1])
 
-            
+        if alert_content_diff:
 
             if alert_words_in_blacklist:
 
-                send_discord_alert(url=target[1], content=alert_content_diff +
-                                   alert_words_in_blacklist, title="MEDIUM RISK - HAVING WORDS IN BLACKLIST")
+                send_discord_alert(url=target[1], content=alert_words_in_blacklist +
+                                   alert_content_diff, title="MEDIUM RISK - HAVING WORDS IN BLACKLIST")
             else:
                 send_discord_alert(
                     url=target[1], content=alert_content_diff, title="")
+
         else:
+            print(5)
             if alert_words_in_blacklist:
-                send_discord_alert(url=target[1], content=alert_content_diff +
-                                   alert_words_in_blacklist, title="MEDIUM RISK - HAVING WORDS IN BLACKLIST")
+                send_discord_alert(url=target[1], content=alert_words_in_blacklist +
+                                   alert_content_diff, title="MEDIUM RISK - HAVING WORDS IN BLACKLIST")
+
 
 @app.route('/')
 def index():
